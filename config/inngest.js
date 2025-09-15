@@ -61,17 +61,23 @@ export const createUserOrder = inngest.createFunction(
   },
   { event: "order/created" },
   async ({ events }) => {
-    const orders = events.map((event) => {
-      return {
-        userId: event.data.user,
-        items: event.data.items,
-        amount: event.data.amount,
-        address: event.data.address,
-        date: event.data.date,
-      };
-    });
+    // 🔹 Log the raw incoming batch
+    console.log("🔹 Received events:", JSON.stringify(events, null, 2));
+
+    // 🔹 Transform directly
+    const orders = events.map((evt) => ({
+      userId: evt.data.userId,
+      items: evt.data.items,
+      amount: evt.data.amount,
+      address: evt.data.address,
+      date: evt.data.date,
+    }));
+
+    console.log("🔹 Orders to insert:", orders);
+
     await connectDb();
     await Order.insertMany(orders);
+
     return { success: true, processed: orders.length };
   }
 );

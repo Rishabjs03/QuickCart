@@ -1,12 +1,16 @@
+import connectDb from "@/config/db";
 import { inngest } from "@/config/inngest";
 import Product from "@/models/Product";
 import User from "@/models/User";
 import { getAuth } from "@clerk/nextjs/server";
+
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
     const { userId } = getAuth(request);
+    console.log("Placing order for user:", userId);
+
     const { address, items } = await request.json();
     if (!address || items.length === 0) {
       return NextResponse.json({ success: false, message: "invalid data" });
@@ -16,7 +20,7 @@ export async function POST(request) {
       const product = await Product.findById(item.product);
       return (await acc) + product.offerPrice * item.quantity;
     }, 0);
-    await inngest.send({
+    const payload = {
       name: "order/created",
       data: {
         userId,
@@ -25,8 +29,16 @@ export async function POST(request) {
         amount: amount + Math.floor(amount * 0.02),
         date: Date.now(),
       },
-    });
+    };
+
+    console.log(
+      "🔹 Payload sending to Inngest:",
+      JSON.stringify(payload, null, 2)
+    );
+
+    await inngest.send(payload);
     // clear user cart
+
     const user = await User.findById(userId);
     user.cartItems = {};
     await user.save();
